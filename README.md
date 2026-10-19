@@ -1,124 +1,157 @@
 # SOC Model Tester
-### A Local Machine Learning Interface for Network Intrusion Triage
+### Network Intrusion Detection and SOC Triage with Machine Learning
 
-SOC Model Tester is a local web application for loading and testing a saved machine learning artifact, `soc_model.joblib`, developed as part of a multi-dataset Network Intrusion Detection and SOC triage project.
+SOC Model Tester is a local web application for testing machine learning models developed for network intrusion detection and Security Operations Center (SOC) triage.
 
-The application provides a simple interface for testing network-flow records, distinguishing benign traffic from potential attacks, classifying predicted attack families, and reviewing triage priorities. It supports individual predictions, synthetic test samples, and CSV batch evaluation.
+Built with **React, Vite, Flask, and scikit-learn**, the application provides a browser-based interface for loading a serialized model, analyzing network-flow records, predicting benign or attack-like behavior, identifying potential attack families, and assigning provisional triage priorities.
 
-The project is designed for offline model experimentation and demonstration. It does not capture live network traffic or replace a production intrusion detection system.
+The project brings together the model development workflow in Google Colab and a separate web application for interactive inference and evaluation.
+
+> **Project scope:** This is an offline model-testing and research project. It does not inspect live network traffic or replace a production intrusion detection system.
 
 ## Table of Contents
 
-- [Overview](#overview)
+- [Project Overview](#project-overview)
 - [Screenshots](#screenshots)
+- [Model Development Notebook](#model-development-notebook)
 - [Technology Stack](#technology-stack)
 - [System Architecture](#system-architecture)
 - [Model Input Schema](#model-input-schema)
-- [Features](#features)
+- [Application Features](#application-features)
+- [Benchmark Results](#benchmark-results)
 - [Getting Started](#getting-started)
 - [Running the Application](#running-the-application)
-- [Using the Interface](#using-the-interface)
-- [Prediction and Triage Logic](#prediction-and-triage-logic)
+- [Using the Application](#using-the-application)
+- [Prediction and Triage Policy](#prediction-and-triage-policy)
 - [CSV Evaluation](#csv-evaluation)
-- [Model Compatibility and Preprocessing](#model-compatibility-and-preprocessing)
+- [Preprocessing and Model Compatibility](#preprocessing-and-model-compatibility)
 - [Project Structure](#project-structure)
-- [Limitations and Security](#limitations-and-security)
+- [Security and Limitations](#security-and-limitations)
+- [References](#references)
 
-## Overview
+## Project Overview
 
-The project addresses a practical SOC workflow: examine a network-flow record, estimate whether its characteristics resemble benign or attack traffic, and prioritize suspicious records for further investigation.
+Security analysts need reproducible ways to examine network activity, distinguish benign traffic from potentially malicious behavior, and prioritize suspicious records for further investigation.
 
-The saved model artifact may contain a binary classifier, an attack-family classifier, benign-feature percentile information, and severity-related configuration.
+This project explores that workflow using network-flow data from two public benchmark datasets:
 
-The application loads the available components and provides a browser-based interface for testing the model without requiring users to interact directly with the Python code.
+- **CIC-IDS2017**
+- **UNSW-NB15**
 
-**Dataset context:** The model development work uses aligned network-flow features from CIC-IDS2017 and UNSW-NB15. These datasets differ in traffic distributions and attack categories, making per-dataset evaluation important.
+The development notebook covers data auditing, feature alignment, exploratory data analysis, preprocessing, model training, classification evaluation, and SOC triage experiments.
+
+The web application provides an interface for testing the resulting model artifact without requiring users to call the Python inference code manually.
+
+### Prediction workflow
+
+1. Load the saved model artifact.
+2. Provide a network-flow record or upload a CSV dataset.
+3. Predict `BENIGN` or `ATTACK`.
+4. Estimate an attack family when the binary classifier predicts an attack and the family classifier is available.
+5. Assign a provisional triage priority from the available attack probability.
+6. Review the predictions and export batch results when required.
 
 ## Screenshots
 
-### 1. Model Upload and Configuration
+### Model Upload
 
-Upload the serialized model artifact and inspect the model-loading status.
+Upload a trusted model artifact and inspect the model-loading status.
 
-<!-- Screenshot 1: Save your model upload screenshot as docs/images/model-upload.png -->
+![SOC Model Tester: Model Upload](docs/images/model-upload.png)
 
-![SOC Model Tester - Model Upload Interface](docs/images/model-upload.png)
+### Prediction and Triage Results
 
-### 2. Prediction and Triage Results
+Review the predicted label, available confidence scores, attack-family prediction, and triage priority.
 
-Review the predicted traffic label, available probability scores, attack-family classification, and applicable triage priority.
+![SOC Model Tester: Prediction Results](docs/images/prediction-results.png)
 
-<!-- Screenshot 2: Save your prediction results screenshot as docs/images/prediction-results.png -->
+## Model Development Notebook
 
-![SOC Model Tester - Prediction Results](docs/images/prediction-results.png)
+The machine learning workflow is documented in the project's Jupyter notebook, which can be viewed directly on GitHub.
 
-To add these screenshots, create a `docs/images/` directory in the repository and save the corresponding images using the filenames shown above. The images will appear automatically on GitHub once the files are committed.
+**[View the complete SOC model development notebook](notebooks/soc_intrusion_detection_pipeline.ipynb)**
+
+The notebook includes:
+
+- Dataset loading and data quality auditing.
+- Feature alignment between CIC-IDS2017 and UNSW-NB15.
+- Exploratory data analysis and label distribution analysis.
+- Train/test splitting and preprocessing validation.
+- Baseline, logistic regression, weighted logistic regression, and Random Forest experiments.
+- Binary attack detection and attack-family classification.
+- Confusion matrices, classification metrics, and error analysis.
+- Provisional SOC triage thresholds and severity-related analysis.
+- Inference tests and model artifact preparation.
+
+For additional notebook information, see [`notebooks/ReadMe.md`](notebooks/ReadMe.md).
 
 ## Technology Stack
 
 | Component | Technology | Purpose |
 |---|---|---|
-| Frontend | React | Interactive, single-page user interface |
+| Frontend | React | Interactive single-page user interface |
 | Frontend tooling | Vite | Development server and frontend build tooling |
-| UI development | JavaScript, HTML, CSS | Forms, input validation, layout, and results presentation |
-| Backend | Python | Model loading, feature preparation, inference, and evaluation |
-| Web API | Flask | Handles frontend requests and model operations |
-| Machine learning | scikit-learn 1.6.1 | Compatible estimator and pipeline environment |
-| Model persistence | joblib | Loads the serialized model artifact |
-| Data input/output | CSV | Batch prediction, optional evaluation, and result export |
+| Interface | JavaScript, HTML, CSS | Forms, layouts, input validation, and result presentation |
+| Backend | Python | Model loading, inference, and evaluation logic |
+| Web API | Flask | Connects the frontend to backend operations |
+| Machine learning | scikit-learn | Classification estimators and preprocessing |
+| Model serialization | joblib | Persistence and loading of trained model objects |
+| Data exchange | CSV | Batch input, prediction output, and optional evaluation |
 
-The frontend and backend run as separate local development services. React communicates with Flask to request model inspection and prediction operations.
+The backend requirements pin scikit-learn to version `1.6.1` to align with the version reported by the development notebook.
 
 ## System Architecture
 
 ```text
-                   SOC Analyst
-                        |
-                        v
-              React + Vite Frontend
-                localhost:5173
-                        |
-                        | HTTP requests
-                        v
-                 Flask Backend
-               127.0.0.1:5000
-                        |
-                        v
-                Model Artifact
-                 soc_model.joblib
-                        |
-             +----------+----------+
-             |                     |
-             v                     v
-       Binary Classifier    Family Classifier
-       BENIGN / ATTACK      Attack Category
-             |
-             v
-       Triage Assessment
-             |
-             v
-       Results and CSV Export
+                       SOC Analyst
+                            |
+                            v
+                    React + Vite UI
+                    localhost:5173
+                            |
+                            | HTTP requests
+                            v
+                      Flask API
+                    127.0.0.1:5000
+                            |
+                            v
+                     Model Artifact
+                    soc_model.joblib
+                            |
+                 +----------+----------+
+                 |                     |
+                 v                     v
+          Binary Classifier     Family Classifier
+          BENIGN / ATTACK       Attack Category
+                 |
+                 v
+           Triage Assessment
+                 |
+                 v
+          Results and CSV Export
 ```
 
-The family classifier is used for records predicted as `ATTACK` in the combined SOC triage workflow, when the required classifier is available in the bundle.
+The binary classifier predicts benign or attack-like behavior. The family classifier is used in the combined workflow for records predicted as `ATTACK`, provided that the required classifier is available.
 
-The application is intended for local experimentation. It does not automatically block traffic or perform live packet inspection.
+The application and API run locally as separate development services.
 
 ## Model Input Schema
 
-The application uses the following seven shared features from the notebook. CSV columns are selected by name rather than by their position.
+The application uses seven aligned numerical features in the following order:
 
-| Feature | Description | Expected representation |
-|---|---|---|
-| `flow_duration_seconds` | Duration of the network flow | Numeric |
-| `src_packets` | Number of packets sent from the source | Numeric |
-| `dst_packets` | Number of packets sent from the destination | Numeric |
-| `src_bytes` | Bytes sent from the source | Numeric |
-| `dst_bytes` | Bytes sent from the destination | Numeric |
-| `src_mean_packet_bytes` | Average source packet size in bytes | Numeric |
-| `dst_mean_packet_bytes` | Average destination packet size in bytes | Numeric |
+| Feature | Description |
+|---|---|
+| `flow_duration_seconds` | Duration of the network flow |
+| `src_packets` | Number of packets sent from the source |
+| `dst_packets` | Number of packets sent from the destination |
+| `src_bytes` | Total bytes sent from the source |
+| `dst_bytes` | Total bytes sent from the destination |
+| `src_mean_packet_bytes` | Mean packet size for source traffic |
+| `dst_mean_packet_bytes` | Mean packet size for destination traffic |
 
-The following columns may be present in evaluation datasets but are **not model input features**:
+CSV processing selects these features by name, allowing the input columns to appear in a different order.
+
+The following columns are label or audit fields, not model inputs:
 
 - `is_attack`
 - `attack_category`
@@ -126,181 +159,176 @@ The following columns may be present in evaluation datasets but are **not model 
 - `original_label`
 - `binary_label`
 
-These fields provide ground-truth labels or audit information. Keeping them out of the prediction input helps avoid label leakage.
+Keeping ground-truth labels outside the model input helps prevent label leakage during evaluation.
 
-## Features
+## Application Features
 
 ### Model Loading and Inspection
 
-- Upload a trusted `.joblib`, `.pkl`, or `.pickle` artifact.
-- Inspect common dictionary or list model bundles for recognizable estimator objects.
-- Identify likely binary and family classifiers when their names or metadata provide sufficient clues.
-- Display discoverable benign percentile information and severity configuration.
-- Report model-loading or compatibility problems through the interface.
+- Upload a trusted `.joblib`, `.pkl`, or `.pickle` model artifact.
+- Inspect supported model bundles for recognizable estimator objects.
+- Identify likely binary and family classifiers from the available model structure.
+- Display discoverable benign percentile and severity-related configuration.
+- Report model-loading and compatibility errors.
 
 ### Single-Record Prediction
 
-- Enter network-flow feature values manually.
-- Populate the form using available example records.
-- Generate a synthetic random sample for a quick inference test.
-- Run a direct prediction against a selected classifier.
-- Run the combined SOC triage workflow.
+- Enter the seven network-flow features manually.
+- Populate the form using example flow records.
+- Generate synthetic random feature values for a functional test.
+- Run a selected classifier directly.
+- Run the combined binary detection and attack-family workflow.
 - Display available predicted labels and probability scores.
 
 ### CSV Batch Testing
 
-- Upload a CSV containing the seven required feature columns.
-- Handle reordered input columns by selecting features by name.
-- Process up to 5,000 records per batch.
-- Generate 25 synthetic test rows directly in the interface.
-- Export prediction results as a CSV file.
-- Calculate evaluation metrics when supported ground-truth labels are present.
+- Upload CSV files containing the required feature columns.
+- Process up to 5,000 rows per batch.
+- Generate 25 synthetic rows from the interface.
+- Calculate binary classification metrics when supported ground-truth labels are present.
+- Export prediction results to CSV.
 
-Synthetic samples are intended for testing the application workflow. They are not labeled observations from real network traffic and should not be used to claim model accuracy.
+Synthetic records are intended for testing the application workflow. They are not real traffic observations and should not be used to establish detection accuracy.
+
+## Benchmark Results
+
+The development notebook reported the following results for its particular evaluation setup:
+
+| Model or task | Metric | Reported result |
+|---|---|---:|
+| Random Forest: attack vs. benign | Accuracy | 88.59% |
+| Random Forest: attack vs. benign | F1-score | 89.12% |
+| Attack-family classifier | Accuracy on true-attack alerts | 82.18% |
+| Attack-family classifier | Macro F1-score | 65.70% |
+
+The family classifier metrics were reported on 47,837 true-attack alerts.
+
+These figures are **not guarantees of production performance**. They describe the particular data preparation, train/test split, and evaluation workflow used in the notebook. Results can change with dataset composition, preprocessing, class distribution, and evaluation methodology.
+
+For a meaningful assessment, examine false negatives, false positives, attack recall, precision, confusion matrices, and results for each dataset separately.
 
 ## Getting Started
 
 ### Prerequisites
 
-Install the following software before running the application:
+Install the following software:
 
-- **Python 3.12** for the backend environment.
-- **Node.js LTS**, which includes npm, for the frontend.
-- **Visual Studio Code** or another code editor.
-- A trusted `soc_model.joblib` artifact for actual model testing.
+- Python 3.12
+- Node.js LTS, including npm
+- Visual Studio Code or another code editor
+- A compatible, trusted `soc_model.joblib` artifact for inference testing
 
-The notebook environment used scikit-learn 1.6.1. The backend requirements pin this version to help maintain compatibility with the saved artifact.
-
-Verify that Python and Node.js are available from a terminal:
+Verify the installations in a terminal:
 
 ```powershell
 python --version
 node --version
 npm.cmd --version
+git --version
 ```
 
-If a command is not recognized, install the corresponding software and reopen the terminal.
+The application can be developed without VS Code, but VS Code provides a convenient interface for managing the React and Flask code.
 
-### Open the Project
-
-Extract the repository into a normal directory and open that directory in Visual Studio Code.
-
-For example:
+### Clone the Repository
 
 ```powershell
-cd C:\Users\YourUsername\Desktop\soc-model-tester
+git clone https://github.com/Salman-Sensei/soc-model-tester.git
+cd soc-model-tester
 ```
 
-Replace the example path with the actual location of your project.
-
-Open two separate terminals in VS Code using **Terminal → New Terminal**. The first will run Flask and the second will run React.
+Open the project folder in VS Code if desired.
 
 ## Running the Application
 
-### Terminal 1: Set Up and Start Flask
+The frontend and backend run in two separate terminals. Keep both terminals open while using the application.
 
-From the project root, execute:
+### Terminal 1: Flask Backend
+
+From the project root, run:
 
 ```powershell
 cd backend
 python -m venv .venv
 ```
 
-Install the backend dependencies:
+Install the dependencies:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Start the backend:
+Start the Flask API:
 
 ```powershell
 .\.venv\Scripts\python.exe app.py
 ```
 
-The Flask service should be available at:
+The backend should be available at:
 
-```text
-http://127.0.0.1:5000
-```
+`http://127.0.0.1:5000`
 
-Keep this terminal open while using the application.
+### Terminal 2: React Frontend
 
-### Terminal 2: Set Up and Start React
-
-Open a second terminal. If it starts in the project root, execute:
+Open a second terminal from the project root:
 
 ```powershell
 cd frontend
 npm.cmd install
-```
-
-Start the Vite development server:
-
-```powershell
 npm.cmd run dev
 ```
 
-The frontend should be available at:
+Open the local URL printed by Vite. The default development address is:
 
-```text
-http://127.0.0.1:5173
-```
+`http://127.0.0.1:5173`
 
-Open that address in your browser.
+**Windows PowerShell note:** Use `npm.cmd` if the PowerShell execution policy blocks `npm.ps1`. This avoids changing the system-wide PowerShell security policy.
 
-**Windows PowerShell note:** The `npm.cmd` commands can be used when PowerShell blocks `npm.ps1` because of its execution policy. This avoids changing the system-wide PowerShell security policy.
+If the backend or frontend fails to start, check the corresponding terminal output and verify that the dependencies are installed.
 
-Both services must remain running during testing. Stop a service by pressing `Ctrl+C` in its terminal.
+## Using the Application
 
-## Using the Interface
+### 1. Load the Model
 
-### Step 1: Load the Model
+Open the frontend and upload your trusted model artifact using the model upload control. Confirm that the backend reports successful loading.
 
-Open the application in your browser and select your trusted `soc_model.joblib` artifact using the model upload control. Click the model-loading action and check the status message.
+### 2. Run a Prediction
 
-The model must contain recognizable estimators or otherwise match the backend's supported bundle structure.
+Choose the combined SOC triage workflow or an individual classifier. Enter a sample manually, select an available example, or generate a synthetic sample.
 
-### Step 2: Run a Single Prediction
+Run the prediction and inspect the returned information.
 
-Select the desired classifier or the combined SOC triage workflow.
+### 3. Test a Dataset
 
-Use an example record, generate a synthetic random sample, or enter numeric values for the seven input features. Run the prediction and review the returned results.
+Select CSV batch mode and upload a CSV containing the required seven features. A labeled CSV can additionally support evaluation if its target labels are recognized.
 
-### Step 3: Test a CSV
+For a quick functionality check, generate the 25-row synthetic sample directly in the interface.
 
-Choose CSV batch mode and upload a dataset containing the required feature columns.
+### 4. Inspect and Export Results
 
-Alternatively, use the interface's synthetic batch generator to create 25 rows for a quick functional test.
+Review the predictions and available metrics. Export the batch results when needed.
 
-The input labels, when present, should remain separate from the model features. The application can use recognized ground-truth fields for evaluation after prediction.
+A successful model response confirms that the inference path executed. It does not prove that an individual prediction is correct.
 
-### Step 4: Review and Export
+## Prediction and Triage Policy
 
-Inspect the prediction results and any available evaluation metrics. Export the batch results to CSV when required.
+The combined workflow uses the binary classifier to predict `BENIGN` or `ATTACK`. When the prediction is `ATTACK`, the family classifier may estimate the likely attack family.
 
-A successful prediction confirms that the inference path ran. It does not, by itself, establish that the prediction is correct.
-
-## Prediction and Triage Logic
-
-The combined workflow uses the binary classifier to distinguish `BENIGN` from `ATTACK`. If the prediction is `ATTACK`, the family classifier may be used to estimate an attack category.
-
-When an attack probability is available, the provisional triage policy follows these thresholds:
+If the binary classifier provides a usable attack probability, the default provisional policy is:
 
 | Attack probability | Triage priority |
 |---|---|
-| \(P(\text{ATTACK}) < 0.50\) | `LOW_PRIORITY` |
-| \(0.50 \leq P(\text{ATTACK}) < 0.85\) | `REVIEW` |
-| \(P(\text{ATTACK}) \geq 0.85\) | `HIGH_PRIORITY_REVIEW` |
+| Below `0.50` | `LOW_PRIORITY` |
+| `0.50` to below `0.85` | `REVIEW` |
+| `0.85` or above | `HIGH_PRIORITY_REVIEW` |
 
-These are demonstration thresholds supplied by the project specification. They are not calibrated or validated operational rules.
+These thresholds come from the project specification. They are demonstration settings, not calibrated or validated operational rules.
 
-The interface should not be interpreted as providing a validated severity score, incident confirmation, or automated response authorization merely because a record receives a high-priority result.
+The application should not be interpreted as providing a validated severity score, confirmed incident attribution, or automated response authorization unless those capabilities are explicitly supported by the saved configuration and implementation.
 
 ## CSV Evaluation
 
-When a supported target label is available in the uploaded dataset, the application can report binary classification metrics, including:
+When a supported target label is included in an uploaded dataset, the application can calculate binary classification metrics such as:
 
 - Accuracy
 - Attack precision
@@ -311,31 +339,29 @@ When a supported target label is available in the uploaded dataset, the applicat
 - False positives (FP)
 - False negatives (FN)
 
-Evaluation is meaningful only when the ground-truth labels are correctly mapped and correspond to the same records being evaluated.
+Metrics are meaningful only when ground-truth labels are correctly mapped to predictions from the same records.
 
-For reliable model assessment, use a held-out test set and examine results separately for CIC-IDS2017 and UNSW-NB15 where possible. Differences between datasets may expose domain shift that a single aggregate score can hide.
+For reliable evaluation, use an appropriate held-out test set and examine CIC-IDS2017 and UNSW-NB15 results separately where possible. Differences between datasets may expose domain shift that aggregate metrics conceal.
 
-Do not interpret metrics calculated on training rows as independent test performance.
+Metrics calculated on training records must not be presented as independent test performance.
 
-## Model Compatibility and Preprocessing
+## Preprocessing and Model Compatibility
 
-The notebook reports a prepared training matrix with standardized features, with means near zero and standard deviations near one.
+The development notebook reports that the prepared training matrix used standardized features, with means near zero and standard deviations near one.
 
-This has an important implication: if the saved classifiers were trained on standardized inputs, prediction inputs must undergo the same fitted transformation.
+If a classifier was trained on standardized features, its inference inputs must receive the same fitted transformation. The saved artifact should therefore contain the required fitted preprocessing pipeline or the corresponding fitted transformer and compatible inference logic.
 
-The application checks for supported scikit-learn pipelines or separately bundled preprocessing objects when discoverable. If the expected preprocessing cannot be found, the backend may warn that raw values are being passed directly to the estimator.
+The application checks for recognizable scikit-learn pipelines or separate preprocessing objects where supported. If no appropriate preprocessing object is found, raw feature values may be passed directly to the estimator, potentially producing misleading predictions.
 
-In that situation, the model may still return a prediction, but the result should not be trusted until the training preprocessing workflow has been verified.
+Before trusting the results, confirm that:
 
-Before interpreting predictions, confirm that:
-
-1. The saved bundle contains the intended binary and family classifiers.
-2. The feature order and definitions match those used during training.
+1. The bundle contains the intended binary and family classifiers.
+2. Feature names, units, order, and definitions match those used during training.
 3. The fitted preprocessing is present and applied correctly.
-4. The installed scikit-learn version is compatible with the serialized estimators.
-5. The target classes and probability-column mappings are interpreted correctly.
+4. The installed scikit-learn version is compatible with the saved estimators.
+5. The target labels and probability columns are mapped correctly.
 
-Serialized scikit-learn models may not be compatible across arbitrary library versions. The pinned requirements reduce version mismatch risk but do not guarantee compatibility with every artifact.
+The dependency pin reduces version mismatch risk but cannot guarantee compatibility with every serialized model.
 
 ## Project Structure
 
@@ -344,36 +370,43 @@ soc-model-tester/
 ├── backend/
 │   ├── app.py
 │   ├── requirements.txt
-│   ├── models/
-│   └── uploads/
+│   └── .gitignore
 │
 ├── frontend/
 │   ├── index.html
 │   ├── package.json
+│   ├── package-lock.json
+│   ├── vite.config.js
 │   └── src/
+│       ├── App.jsx
+│       ├── main.jsx
+│       └── styles.css
+│
+├── notebooks/
+│   ├── soc_intrusion_detection_pipeline.ipynb
+│   └── ReadMe.md
 │
 ├── docs/
 │   └── images/
 │       ├── model-upload.png
 │       └── prediction-results.png
 │
-├── install-tools.bat
-├── start-windows.bat
-├── check-tools.bat
+├── .gitignore
 └── README.md
 ```
 
-The `models/` and `uploads/` directories may be created or used by the backend as required. The batch scripts are optional Windows convenience tools; the terminal walkthrough above explains how to run the project manually.
+Runtime-generated directories, such as local model storage and uploads, may be created when the application runs.
 
-## Limitations and Security
+## Security and Limitations
 
-- **Local testing only:** This project is an offline model-testing interface, not a production SOC platform or live network intrusion detection service.
-- **Model trust:** Joblib and pickle-based formats can execute code during deserialization. Load only artifacts from trusted sources.
-- **Preprocessing:** A prediction is not reliable unless the input transformation matches the training procedure.
-- **Synthetic data:** Randomly generated records test application functionality, not real-world detection quality.
-- **Evaluation:** Metrics depend on valid ground-truth labels and an appropriate test set.
-- **Operational response:** An alert is a lead for investigation, not proof of an incident. The application should not automatically block traffic based on these demonstration thresholds.
-- **Privacy:** Keep the development services on your local machine and avoid uploading confidential traffic records or sensitive datasets to public repositories.
+- **Offline demonstration:** The application is not a production SOC platform and does not capture live network traffic.
+- **Serialized model security:** Joblib and pickle-based formats can execute code during deserialization. Load only model artifacts from trusted sources.
+- **Preprocessing:** Prediction outputs should not be trusted until the inference transformations are verified against training.
+- **Synthetic test data:** Random values help test the interface and inference path but cannot establish real-world detection quality.
+- **Evaluation:** Metrics depend on valid labels, an appropriate test split, and the model's training and preprocessing procedure.
+- **Triage policy:** Alert priorities are provisional and should not be used to automatically block traffic.
+- **Privacy:** Do not commit private datasets, API credentials, environment files, or confidential traffic records.
+- **Artifact distribution:** Only publish a trained model artifact if you intend to distribute it and have checked its contents, size, licensing implications, and security considerations.
 
 ## References
 
@@ -382,9 +415,15 @@ The `models/` and `uploads/` directories may be created or used by the backend a
 - [Flask Documentation](https://flask.palletsprojects.com/)
 - [scikit-learn Documentation](https://scikit-learn.org/stable/)
 - [joblib Persistence and Security Guidance](https://joblib.readthedocs.io/en/latest/user_guide/persistence.html)
+- [CIC-IDS2017 Dataset](https://www.unb.ca/cic/datasets/ids-2017.html)
+- [UNSW-NB15 Dataset](https://research.unsw.edu.au/projects/unsw-nb15-dataset)
 - [Python Downloads](https://www.python.org/downloads/)
 - [Node.js Downloads](https://nodejs.org/en/download)
 
 ---
 
-**Project purpose:** Provide a transparent, reproducible local interface for exercising a saved network-intrusion model, inspecting its outputs, and supporting further model evaluation.
+**Maintainer:** [Salman-Sensei](https://github.com/Salman-Sensei)
+
+**Repository:** [soc-model-tester](https://github.com/Salman-Sensei/soc-model-tester)
+
+The project provides a reproducible starting point for experimenting with network intrusion classification and exploring how trained model outputs can support SOC triage workflows.
