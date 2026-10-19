@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.venv/
+uploads/*
+!uploads/.gitkeep
+models/*.joblib
+models/*.pkl
+!models/.gitkeep

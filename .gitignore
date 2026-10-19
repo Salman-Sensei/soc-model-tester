@@ -1,0 +1,30 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+backend/.venv/
+.pytest_cache/
+
+# Node.js
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Secrets and environment configuration
+.env
+.env.*
+!.env.example
+
+# Serialized machine learning models
+*.joblib
+*.pkl
+*.pickle
+
+# Local uploads and model storage
+backend/uploads/
+backend/models/
+
+# Logs
+*.log
